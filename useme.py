@@ -12,16 +12,17 @@ def compare_vertices(vertex):
     x, y = vertex
     return x + y
 
+def readChar(img):
+    pass
+
 def OCR(img):
     img = cv2.resize(img, (120,40))
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     imgL = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
     img_gray = cv2.equalizeHist(img_gray)
-    
     imshow(img)
     plt.title("Oryginalne zdjęcie")
     plt.show()
-    
     
     flaga = False
     for thresh in range(190,140,-5):
@@ -41,7 +42,6 @@ def OCR(img):
             plt.title("OPEN")
             plt.show()
            '''
-           
             con, _ = cv2.findContours(open_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             box = []
             for contour in con:
@@ -58,31 +58,36 @@ def OCR(img):
                         box.append(approx2)
                         flaga = True
                         break
-            
             if flaga:
                 break
         if flaga:
             break
     
-    imshow(imgL)
-    plt.title("Zaznaczona rejestracja")
-    plt.show()
-    
-    pts1 = np.float32(box[0])
-    pts2 = np.float32([[0,0],[0,40],[120,0],[120,40]])
-    matrix = cv2.getPerspectiveTransform(pts1, pts2)
-    imgM = cv2.warpPerspective(img, matrix, (120,40))
-    
-    imshow(imgM)
-    plt.title("Kadrowanie")
-    plt.show()
+    if flaga:
+        imshow(imgL)
+        plt.title("Zaznaczona rejestracja")
+        plt.show()
+        pts1 = np.float32(box[0])
+        pts2 = np.float32([[0,0],[0,40],[120,0],[120,40]])
+        matrix = cv2.getPerspectiveTransform(pts1, pts2)
+        imgM = cv2.warpPerspective(img, matrix, (120,40))
+        imshow(imgM)
+        plt.title("Kadrowanie")
+        plt.show()
+        return imgM
+    else:
+        imshow(img)
+        plt.title("Nieczytelna rejestracja")
+        plt.show()
+        return None
 
 
+for i in range(11,13):
+    img = cv2.imread(f"Assets/{i}.jpg")
+    tablica = OCR(img)
 
-
-for i in range(1,13):
-    img = cv2.imread(f"{i}.jpg")
-    OCR(img)
+    if tablica is not None:
+        readChar(tablica)
 
 
 
