@@ -77,3 +77,23 @@ def OCR(img):
     plt.title("Kadrowanie")
     plt.show()
 
+
+
+
+for i in range(1,13):
+    img = cv2.imread(f"{i}.jpg")
+    OCR(img)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
