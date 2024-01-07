@@ -12,53 +12,44 @@ def compare_vertices(vertex):
     x, y = vertex
     return x + y
 
-def readChar(img):
+def getChar(img):
     repat = True
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    imshow(img_gray)
-    plt.title("GRAY")
-    plt.show()
+    chars = []
     while repat:
         ret, img_thresh = cv2.threshold(img_gray, 120, 255, type=cv2.THRESH_BINARY_INV)
+        '''
         imshow(img_thresh)
         plt.title("THRESH")
         plt.show()
+        '''
         con, _ = cv2.findContours(img_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        print(len(con))
         charBox = [cv2.boundingRect(contour) for contour in con]
-        
-        for char in charBox:
-            x,y,w,h = char
-            if 5<w<15 and 15<h<35:
+        for cutChar in charBox:
+            x,y,w,h = cutChar
+            if (8<w<15 and 20<h) or (3<w<8 and 30<h):
                 #print(f"IF: x{x} y{y} w{w} h{h}")
-                h = 30
-                cv2.rectangle(img, (x,y), (x+w,y+h), (0,255,0), 1)
+                y = 0
+                h = 40
+                #cv2.rectangle(img, (x,y), (x+w,y+h), (0,255,0), 1)
+                chars.append((x,y,w,h))
+                img_gray[y:y+h,x:x+w] = 255
                 repat = False
             else:
                 #print(f"ELSE x{x} y{y} w{w} h{h}")
-                if w<10:
-                    if y < 20:    
-                        h = h+5
-                    else:
-                        y = y-5
-                    imshow(cv2.rectangle(img, (x,y), (x+w,y+h), (255,0,0), 2))
-                    plt.show()
+                if 3<w<10:
+                    h = h + 3
+                    #imshow(cv2.rectangle(img, (x,y), (x+w,y+h), (255,0,0), 2))
+                    #plt.show()
                     img_gray = cv2.rectangle(img_gray, (x,y), (x+w,y+h), (0,0,0), 1)
-                    imshow(img_gray)
-                    plt.title("img_gray img_gray")
-                    plt.show()
                     repat = True
-                
+            '''
             imshow(img)
             plt.show()
+            '''
+    return chars
         
-    '''
-    for i in range(0,120,10):
-        imgCut = img_gray[:,i:i+10]
-        imshow(imgCut)
-        plt.title(f"CUT {i}-{i+10}")
-        plt.show()
-    '''
+
 def OCR(img):
     img = cv2.resize(img, (120,40))
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -129,15 +120,21 @@ def OCR(img):
         return None
 
 # 1..13
-for i in range(1,2):
+for i in range(3,4):
     img = cv2.imread(f"Assets/{i}.jpg")
     tablica = OCR(img)
 
     if tablica is not None:
-        readChar(tablica)
+        digit = getChar(tablica)
+    
+    print(len(tablica))
 
-
-
+    test = np.zeros((40,120,3), dtype=np.uint8)
+    for i, char in enumerate(digit):
+        x,y,w,h = char
+        test[y:y+h, x:x+w, :] = tablica[y:y+h, x:x+w, :]
+    imshow(test)
+    plt.show()
 
 
 
