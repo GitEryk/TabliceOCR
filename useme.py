@@ -51,10 +51,10 @@ def getChar(img_gray):
         for cutChar in charBox:
             x,y,w,h = cutChar
             if (8<w<15 and 32<h<37) or (3<w<8 and 32<h<37) or (13<w<25 and 32<h<37):
-                print(f"IF: x{x} y{y} w{w} h{h}") #KASUJ
+                #print(f"IF: x{x} y{y} w{w} h{h}") #KASUJ
                 y = 0
                 h = 40
-                time.sleep(1)
+                #time.sleep(0.5)
                 chars.append((x,y,w,h))
                 img_thresh[y:y+h,x-1:x+w+1] = 0
                 imshow(img_thresh)
@@ -81,7 +81,6 @@ def getChar(img_gray):
             plt.show()          
         count = count + 1
         
-        time.sleep(2) #KASUJ
         print(F"meanG {meanG}") #KASUJ
         if  meanG < 10:
             break
@@ -167,35 +166,48 @@ def findTable(img):
 
 # MAIN
 chars = getTemple()
-for i in  range(1,2):
-    img = cv2.imread(f"Assets/{i}.jpg")
-    tablica = findTable(img)
 
-    if tablica is not None:
-        tablica = cv2.cvtColor(tablica, cv2.COLOR_BGR2GRAY)
-        rawChar = getChar(tablica)
-        imshow(tablica)
-        plt.show()
+img = cv2.imread(f"Assets/{1}.jpg")
+tablica = findTable(img)
+if tablica is not None:
+    img = tablica
+    tablica = cv2.cvtColor(tablica, cv2.COLOR_BGR2GRAY)
+    rawChar = getChar(tablica)
+    imshow(tablica)
+    plt.show()
   
-    print(len(rawChar)) #KASUJ
-    group_result = []
-    test = np.zeros((40,120,3), dtype=np.uint8) #KASUJ
-    for i, char in enumerate(rawChar):
-        x,y,w,h = char
-        roi = tablica[y:y+h, x:x+w, :]
-        predict = []
-        for (char, charRoi) in chars.items():
-            result = cv2.matchTemplate(roi, charRoi, cv2.TM_CCOEFF)
-            (_, score, _, _) = cv2.minMaxLoc(result)
-            predict.append(score)
-        group_result.append(str(np.argmax(predict)))
-        org_img = cv2.putText(test,"".join(group_result), (x,y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0,255,0),2)
+group_result = []
+wycinek = []
+for i, char in enumerate(rawChar):
+    x, y, w, h = char
+    roi = tablica[y:y + h, x:x + w]
+    roi = cv2.resize(roi, (34, 23))   
+    wycinek.append(roi)
+    predict = []
+    
+    for (char, charRoi) in chars.items():
+        charRoi = cv2.resize(charRoi, (34, 23))
+        _, charRoi = cv2.threshold(charRoi, 127, 255, cv2.THRESH_BINARY_INV)
+        result = cv2.matchTemplate(roi, charRoi, cv2.TM_CCOEFF)
+        (_, score, _, _) = cv2.minMaxLoc(result)
+        predict.append(score)
         
-        test[y:y+h, x:x+w, :] = tablica[y:y+h, x:x+w, :] #KASUJ
-        imshow(test) #KASUJ
-        plt.show() #KASUJ
-  
-
+    group_result.append(str(np.argmax(predict)))
+    print(group_result)
+    
+    
+for count, i in enumerate(group_result):
+    charRoi = chars[int(i)]
+    char = cv2.resize(charRoi, (34, 23))
+    
+    plt.subplot(221)
+    imshow(wycinek[count])
+    plt.title("Wycinek")
+    
+    plt.subplot(222)
+    imshow(char)
+    plt.title("wzornik")
+    plt.show()
 
 
 
