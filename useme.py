@@ -1,6 +1,7 @@
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
 def imshow(image):
   if len(image.shape) == 2 or len(image.shape) == 3 and image.shape[-1] == 1:
@@ -12,45 +13,85 @@ def compare_vertices(vertex):
     x, y = vertex
     return x + y
 
-def getChar(img):
-    repat = True
-    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+def getTemple():
+    img = cv2.imread("Assets/wzornik.jpg")
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    _, thresh = cv2.threshold(img,127,255, cv2.THRESH_BINARY_INV)
+    con, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    charsbox = [cv2.boundingRect(contour) for contour in con]
+    charsbox = sorted(charsbox, key=lambda x: x[0])
+    maxwidth = max([char[2] for char in charsbox])
+    maxheight = max([char[3] for char in charsbox])
+    print(f"maxw {maxwidth} maxh {maxheight}") #KASUJ
+    chars = {}
+    for (index, box) in enumerate(charsbox):
+        (x,y,w,h) = box
+        roi = img[y:y+h, x:x+w]
+        roi = cv2.resize(roi, (maxwidth, maxheight))
+        _, roi = cv2.threshold(roi, 10, 255, cv2.THRESH_BINARY_INV)
+        chars[index] = roi
+    return chars
+
+def getChar(img_gray):
     chars = []
-    while repat:
-        ret, img_thresh = cv2.threshold(img_gray, 120, 255, type=cv2.THRESH_BINARY_INV)
-        '''
-        imshow(img_thresh)
-        plt.title("THRESH")
-        plt.show()
-        '''
+    count = 0
+    img_thresh = cv2.adaptiveThreshold(
+        img_gray, 
+        maxValue=255, 
+        adaptiveMethod=cv2.ADAPTIVE_THRESH_MEAN_C, 
+        thresholdType=cv2.THRESH_BINARY_INV, 
+        blockSize=9, 
+        C=13)
+    imshow(img_thresh)
+    plt.title("THRESH ")
+    plt.show()
+    while True:
         con, _ = cv2.findContours(img_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         charBox = [cv2.boundingRect(contour) for contour in con]
         for cutChar in charBox:
             x,y,w,h = cutChar
-            if (8<w<15 and 20<h) or (3<w<8 and 30<h):
-                #print(f"IF: x{x} y{y} w{w} h{h}")
+            if (8<w<15 and 32<h<37) or (3<w<8 and 32<h<37) or (13<w<25 and 32<h<37):
+                print(f"IF: x{x} y{y} w{w} h{h}") #KASUJ
                 y = 0
                 h = 40
-                #cv2.rectangle(img, (x,y), (x+w,y+h), (0,255,0), 1)
+                time.sleep(1)
                 chars.append((x,y,w,h))
-                img_gray[y:y+h,x:x+w] = 255
-                repat = False
-            else:
-                #print(f"ELSE x{x} y{y} w{w} h{h}")
-                if 3<w<10:
-                    h = h + 3
-                    #imshow(cv2.rectangle(img, (x,y), (x+w,y+h), (255,0,0), 2))
-                    #plt.show()
-                    img_gray = cv2.rectangle(img_gray, (x,y), (x+w,y+h), (0,0,0), 1)
-                    repat = True
-            '''
-            imshow(img)
+                img_thresh[y:y+h,x-1:x+w+1] = 0
+                imshow(img_thresh)
+                plt.title("CUT")
+                plt.show()
+                meanG = np.mean(img_thresh)
+               
+        if count < 1:
+            img_flip = cv2.flip(img_thresh,0)
+            imshow(img_flip)
+            plt.title(f"FLIP {count}")
             plt.show()
-            '''
+            img_thresh = cv2.bitwise_or(img_thresh, img_flip)
+            imshow(img_thresh)
+            plt.title(f"FLIP THRESH {count}")
+            plt.show()
+        else:
+            img_thresh = cv2.morphologyEx(img_thresh, cv2.MORPH_CLOSE, kernel = np.ones((count,count), np.uint8))
+            img_thresh = cv2.dilate(img_thresh, kernel = np.ones((count,count), np.uint8))
+            img_thresh[:2,:] = 0
+            img_thresh[-2:,:] = 0
+            imshow(img_thresh)
+            plt.title(f"ClOSE {count}")
+            plt.show()          
+        count = count + 1
+        
+        time.sleep(2) #KASUJ
+        print(F"meanG {meanG}") #KASUJ
+        if  meanG < 10:
+            break
     return chars
         
+def readChar():
+    pass
+    
 
-def OCR(img):
+def findTable(img):
     img = cv2.resize(img, (120,40))
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     imgL = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
@@ -61,27 +102,32 @@ def OCR(img):
     #plt.show()
     
     flaga = False
-    for thresh in range(190,140,-5):
+    for thresh in range(190,110,-5):
         ret, img_thresh = cv2.threshold(img_gray, thresh, 255, type=cv2.THRESH_BINARY)
         #imshow(img_thresh)
         #plt.title("THRESH")
         #plt.show()
         for i in range(1,9):
-            close_img = cv2.morphologyEx(img_thresh, cv2.MORPH_CLOSE, kernel = np.ones((i,i), np.uint8))
-            open_img = cv2.morphologyEx(close_img, cv2.MORPH_OPEN, kernel = np.ones((i,i), np.uint8))
+            close_img = cv2.morphologyEx(img_thresh, cv2.MORPH_CLOSE, kernel = np.ones((i+2,i), np.uint8))
+            open_img = cv2.morphologyEx(close_img, cv2.MORPH_OPEN, kernel = np.ones((i,i+1), np.uint8))
+     
             '''
-            plt.subplot(221)
+            plt.subplot(231)
+            imshow(img_thresh)
+            plt.title(f"img_thresh {thresh}")
+            plt.subplot(232)
             imshow(close_img)
-            plt.title("CLOSE")
-            plt.subplot(222)
+            plt.title(f"CLOSE {i}")
+            plt.subplot(233)
             imshow(open_img)
-            plt.title("OPEN")
+            plt.title(f"OPEN {i}")
             plt.show()
            '''
+          
             con, _ = cv2.findContours(open_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             box = []
             for contour in con:
-                epsilon = 0.02 * cv2.arcLength(contour, True)
+                epsilon = 0.018 * cv2.arcLength(contour, True)
                 approx = cv2.approxPolyDP(contour, epsilon, True)
                 if len(approx) == 4:
                     approx2 = approx.reshape(4,2)
@@ -89,7 +135,7 @@ def OCR(img):
                     w = np.linalg.norm(approx2[2] - approx2[0])
                     h = np.linalg.norm(approx2[1] - approx2[0])
                     #print(f"{i}. w {round(w,2)} h {round(h,2)}")
-                    if 80<w<120 and 20<h<40:
+                    if 85<w<120 and 20<h<40:
                         cv2.drawContours(imgL, [approx], 0, (0, 0, 255), 1)
                         box.append(approx2)
                         flaga = True
@@ -100,7 +146,7 @@ def OCR(img):
             break
     
     if flaga:
-        # WAŻNE WYŚWIETL !!!!!!
+        #WAŻNE WYŚWIETL !!!!!!
         #imshow(imgL)
         #plt.title("Zaznaczona rejestracja")
         #plt.show()
@@ -109,9 +155,9 @@ def OCR(img):
         matrix = cv2.getPerspectiveTransform(pts1, pts2)
         imgM = cv2.warpPerspective(img, matrix, (120,40))
         # WAŻNE WYŚWIETL !!!!!!
-        #imshow(imgM)
-        #plt.title("Kadrowanie")
-        #plt.show()
+        imshow(imgM)
+        plt.title("Kadrowanie")
+        plt.show()
         return imgM
     else:
         imshow(img)
@@ -119,23 +165,36 @@ def OCR(img):
         plt.show()
         return None
 
-# 1..13
-for i in range(3,4):
+# MAIN
+chars = getTemple()
+for i in  range(1,2):
     img = cv2.imread(f"Assets/{i}.jpg")
-    tablica = OCR(img)
+    tablica = findTable(img)
 
     if tablica is not None:
-        digit = getChar(tablica)
-    
-    print(len(tablica))
-
-    test = np.zeros((40,120,3), dtype=np.uint8)
-    for i, char in enumerate(digit):
+        tablica = cv2.cvtColor(tablica, cv2.COLOR_BGR2GRAY)
+        rawChar = getChar(tablica)
+        imshow(tablica)
+        plt.show()
+  
+    print(len(rawChar)) #KASUJ
+    group_result = []
+    test = np.zeros((40,120,3), dtype=np.uint8) #KASUJ
+    for i, char in enumerate(rawChar):
         x,y,w,h = char
-        test[y:y+h, x:x+w, :] = tablica[y:y+h, x:x+w, :]
-    imshow(test)
-    plt.show()
-
+        roi = tablica[y:y+h, x:x+w, :]
+        predict = []
+        for (char, charRoi) in chars.items():
+            result = cv2.matchTemplate(roi, charRoi, cv2.TM_CCOEFF)
+            (_, score, _, _) = cv2.minMaxLoc(result)
+            predict.append(score)
+        group_result.append(str(np.argmax(predict)))
+        org_img = cv2.putText(test,"".join(group_result), (x,y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0,255,0),2)
+        
+        test[y:y+h, x:x+w, :] = tablica[y:y+h, x:x+w, :] #KASUJ
+        imshow(test) #KASUJ
+        plt.show() #KASUJ
+  
 
 
 
