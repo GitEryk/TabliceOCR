@@ -14,7 +14,7 @@ def compare_vertices(vertex):
     return x + y
 
 def getTemple():
-    img = cv2.imread("Assets/wzornik.jpg")
+    img = cv2.imread("Assets/wzornik.png")
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, thresh = cv2.threshold(img,127,255, cv2.THRESH_BINARY_INV)
     con, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -26,69 +26,17 @@ def getTemple():
     chars = {}
     for (index, box) in enumerate(charsbox):
         (x,y,w,h) = box
+        # ??? dla literki I
+        if index == 8:
+            x = x - 5
+            w = w + 10
         roi = img[y:y+h, x:x+w]
         roi = cv2.resize(roi, (maxwidth, maxheight))
         _, roi = cv2.threshold(roi, 10, 255, cv2.THRESH_BINARY_INV)
         chars[index] = roi
+
     return chars
 
-def getChar(img_gray):
-    chars = []
-    count = 0
-    img_thresh = cv2.adaptiveThreshold(
-        img_gray, 
-        maxValue=255, 
-        adaptiveMethod=cv2.ADAPTIVE_THRESH_MEAN_C, 
-        thresholdType=cv2.THRESH_BINARY_INV, 
-        blockSize=9, 
-        C=13)
-    imshow(img_thresh)
-    plt.title("THRESH ")
-    plt.show()
-    while True:
-        con, _ = cv2.findContours(img_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        charBox = [cv2.boundingRect(contour) for contour in con]
-        for cutChar in charBox:
-            x,y,w,h = cutChar
-            if (8<w<15 and 32<h<37) or (3<w<8 and 32<h<37) or (13<w<25 and 32<h<37):
-                #print(f"IF: x{x} y{y} w{w} h{h}") #KASUJ
-                y = 0
-                h = 40
-                #time.sleep(0.5)
-                chars.append((x,y,w,h))
-                img_thresh[y:y+h,x-1:x+w+1] = 0
-                imshow(img_thresh)
-                plt.title("CUT")
-                plt.show()
-                meanG = np.mean(img_thresh)
-               
-        if count < 1:
-            img_flip = cv2.flip(img_thresh,0)
-            imshow(img_flip)
-            plt.title(f"FLIP {count}")
-            plt.show()
-            img_thresh = cv2.bitwise_or(img_thresh, img_flip)
-            imshow(img_thresh)
-            plt.title(f"FLIP THRESH {count}")
-            plt.show()
-        else:
-            img_thresh = cv2.morphologyEx(img_thresh, cv2.MORPH_CLOSE, kernel = np.ones((count,count), np.uint8))
-            img_thresh = cv2.dilate(img_thresh, kernel = np.ones((count,count), np.uint8))
-            img_thresh[:2,:] = 0
-            img_thresh[-2:,:] = 0
-            imshow(img_thresh)
-            plt.title(f"ClOSE {count}")
-            plt.show()          
-        count = count + 1
-        
-        print(F"meanG {meanG}") #KASUJ
-        if  meanG < 10:
-            break
-    return chars
-        
-def readChar():
-    pass
-    
 
 def findTable(img):
     img = cv2.resize(img, (120,40))
@@ -154,9 +102,9 @@ def findTable(img):
         matrix = cv2.getPerspectiveTransform(pts1, pts2)
         imgM = cv2.warpPerspective(img, matrix, (120,40))
         # WAŻNE WYŚWIETL !!!!!!
-        imshow(imgM)
-        plt.title("Kadrowanie")
-        plt.show()
+        #imshow(imgM)
+        #plt.title("Kadrowanie")
+        #plt.show()
         return imgM
     else:
         imshow(img)
@@ -164,56 +112,118 @@ def findTable(img):
         plt.show()
         return None
 
+def getCharBox(img_gray):
+    chars = []
+    count = 0
+    img_thresh = cv2.adaptiveThreshold(
+        img_gray, 
+        maxValue=255, 
+        adaptiveMethod=cv2.ADAPTIVE_THRESH_MEAN_C, 
+        thresholdType=cv2.THRESH_BINARY_INV, 
+        blockSize=9, 
+        C=13)
+    #imshow(img_thresh)
+    #plt.title("THRESH ")
+    #plt.show()
+    while True:
+        con, _ = cv2.findContours(img_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        charBox = [cv2.boundingRect(contour) for contour in con]
+        for cutChar in charBox:
+            x,y,w,h = cutChar
+            if (8<w<15 and 32<h<37) or (3<w<8 and 32<h<37) or (13<w<25 and 32<h<37):
+                #print(f"IF: x{x} y{y} w{w} h{h}") #KASUJ
+                #time.sleep(0.5)
+                chars.append((x,y,w,h))
+                y = 0
+                h = 40
+                img_thresh[y:y+h,x-1:x+w+1] = 0
+                #imshow(img_thresh)
+                #plt.title("CUT")
+                #plt.show()
+                meanG = np.mean(img_thresh)
+               
+        if count < 1:
+            img_flip = cv2.flip(img_thresh,0)
+            #imshow(img_flip)
+            #plt.title(f"FLIP {count}")
+            #plt.show()
+            img_thresh = cv2.bitwise_or(img_thresh, img_flip)
+            #imshow(img_thresh)
+            #plt.title(f"FLIP THRESH {count}")
+            #plt.show()
+            
+        else:
+            img_thresh = cv2.morphologyEx(img_thresh, cv2.MORPH_CLOSE, kernel = np.ones((count,count), np.uint8))
+            img_thresh = cv2.dilate(img_thresh, kernel = np.ones((count,count), np.uint8))
+            img_thresh[:2,:] = 0
+            img_thresh[-2:,:] = 0
+            '''
+            imshow(img_thresh)
+            plt.title(f"ClOSE {count}")
+            plt.show()          
+            '''
+        count = count + 1
+        
+        print(F"meanG {meanG}") #KASUJ
+        if  meanG < 10:
+            break
+    return chars
+
+    
 # MAIN
-chars = getTemple()
+templeChars = getTemple()
+group_result = []
+rawChars = []
 
 img = cv2.imread(f"Assets/{1}.jpg")
-tablica = findTable(img)
+tablica = findTable(img) #return img
 if tablica is not None:
     img = tablica
     tablica = cv2.cvtColor(tablica, cv2.COLOR_BGR2GRAY)
-    rawChar = getChar(tablica)
-    imshow(tablica)
-    plt.show()
-  
-group_result = []
-wycinek = []
-for i, char in enumerate(rawChar):
-    x, y, w, h = char
-    roi = tablica[y:y + h, x:x + w]
-    roi = cv2.resize(roi, (34, 23))   
-    wycinek.append(roi)
+    rawChars = getCharBox(tablica) #return point list
+
+for i, rawChar in enumerate(rawChars):
+    x, y, w, h = rawChar
+    charR = tablica[y:y + h, x:x + w]
+    charR = cv2.resize(charR, (34, 23))
+    _, charR =cv2.threshold(charR, 140, 255, cv2.THRESH_BINARY_INV)
     predict = []
-    
-    for (char, charRoi) in chars.items():
-        charRoi = cv2.resize(charRoi, (34, 23))
-        _, charRoi = cv2.threshold(charRoi, 127, 255, cv2.THRESH_BINARY_INV)
-        result = cv2.matchTemplate(roi, charRoi, cv2.TM_CCOEFF)
+    for (char_name, charT) in templeChars.items(): 
+        charT = cv2.resize(charT, (34, 23))
+        result = cv2.matchTemplate(charR, charT, cv2.TM_CCOEFF)
         (_, score, _, _) = cv2.minMaxLoc(result)
         predict.append(score)
-        
     group_result.append(str(np.argmax(predict)))
-    print(group_result)
     
+print(group_result)
     
-for count, i in enumerate(group_result):
-    charRoi = chars[int(i)]
-    char = cv2.resize(charRoi, (34, 23))
+
+for count, position in enumerate(group_result):
+    charT = templeChars[int(position)]
+    charT = cv2.resize(charT, (34, 23))
+    (x,y,w,h) = rawChars[count]
+    charR = tablica[y:y + h, x:x + w]
+    charR = cv2.resize(charR, (34, 23))
     
     plt.subplot(221)
-    imshow(wycinek[count])
+    imshow(charR)
     plt.title("Wycinek")
-    
+
     plt.subplot(222)
-    imshow(char)
+    imshow(charT)
     plt.title("wzornik")
     plt.show()
 
 
+napis = []
+for x in group_result:
+    x = int(x)
+    if x < 26:
+        napis.append(chr(x + 65))
+    else:
+        napis.append(chr(x + 22))
 
-
-
-
+print(napis)
 
 
 
