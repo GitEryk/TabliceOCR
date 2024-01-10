@@ -44,21 +44,21 @@ def findTable(img):
     imgL = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
     img_gray = cv2.equalizeHist(img_gray)
     # WAŻNE WYŚWIETL !!!!!!
-    #imshow(img)
-    #plt.title("Oryginalne zdjęcie")
-    #plt.show()
+    imshow(img)
+    plt.title("Oryginalne zdjęcie")
+    plt.show()
     
     flaga = False
     for thresh in range(190,110,-5):
         ret, img_thresh = cv2.threshold(img_gray, thresh, 255, type=cv2.THRESH_BINARY)
-        #imshow(img_thresh)
-        #plt.title("THRESH")
-        #plt.show()
+        imshow(img_thresh)
+        plt.title("THRESH")
+        plt.show()
         for i in range(1,9):
             close_img = cv2.morphologyEx(img_thresh, cv2.MORPH_CLOSE, kernel = np.ones((i+2,i), np.uint8))
             open_img = cv2.morphologyEx(close_img, cv2.MORPH_OPEN, kernel = np.ones((i,i+1), np.uint8))
      
-            '''
+           
             plt.subplot(231)
             imshow(img_thresh)
             plt.title(f"img_thresh {thresh}")
@@ -69,7 +69,7 @@ def findTable(img):
             imshow(open_img)
             plt.title(f"OPEN {i}")
             plt.show()
-           '''
+           
           
             con, _ = cv2.findContours(open_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             box = []
@@ -94,17 +94,17 @@ def findTable(img):
     
     if flaga:
         #WAŻNE WYŚWIETL !!!!!!
-        #imshow(imgL)
-        #plt.title("Zaznaczona rejestracja")
-        #plt.show()
+        imshow(imgL)
+        plt.title("Zaznaczona rejestracja")
+        plt.show()
         pts1 = np.float32(box[0])
         pts2 = np.float32([[0,0],[0,40],[120,0],[120,40]])
         matrix = cv2.getPerspectiveTransform(pts1, pts2)
         imgM = cv2.warpPerspective(img, matrix, (120,40))
         # WAŻNE WYŚWIETL !!!!!!
-        #imshow(imgM)
-        #plt.title("Kadrowanie")
-        #plt.show()
+        imshow(imgM)
+        plt.title("Kadrowanie")
+        plt.show()
         return imgM
     else:
         imshow(img)
@@ -115,6 +115,7 @@ def findTable(img):
 def getCharBox(img_gray):
     chars = []
     count = 0
+    meanG = 999
     img_thresh = cv2.adaptiveThreshold(
         img_gray, 
         maxValue=255, 
@@ -122,51 +123,61 @@ def getCharBox(img_gray):
         thresholdType=cv2.THRESH_BINARY_INV, 
         blockSize=9, 
         C=13)
-    #imshow(img_thresh)
-    #plt.title("THRESH ")
-    #plt.show()
+    imshow(img_thresh)
+    plt.title("THRESH ")
+    plt.show()
+    print(F"meanT {np.mean(img_thresh)}")
     while True:
         con, _ = cv2.findContours(img_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         charBox = [cv2.boundingRect(contour) for contour in con]
         for cutChar in charBox:
             x,y,w,h = cutChar
-            if (8<w<15 and 32<h<37) or (3<w<8 and 32<h<37) or (13<w<25 and 32<h<37):
-                #print(f"IF: x{x} y{y} w{w} h{h}") #KASUJ
-                #time.sleep(0.5)
+            if (8<w<15 or 3<w<8 or 13<w<25) and 32<h<37:
+                print(f"IF: x{x} y{y} w{w} h{h}") #KASUJ
+                time.sleep(0.5)
                 chars.append((x,y,w,h))
                 y = 0
                 h = 40
                 img_thresh[y:y+h,x-1:x+w+1] = 0
-                #imshow(img_thresh)
-                #plt.title("CUT")
-                #plt.show()
+                imshow(img_thresh)
+                plt.title("CUT")
+                plt.show()
                 meanG = np.mean(img_thresh)
-               
-        if count < 1:
+            else:
+                print(f"ELSE: x{x} y{y} w{w} h{h}")
+        if count == 0:
             img_flip = cv2.flip(img_thresh,0)
-            #imshow(img_flip)
-            #plt.title(f"FLIP {count}")
-            #plt.show()
+            imshow(img_flip)
+            plt.title(f"FLIP {count}")
+            plt.show()
             img_thresh = cv2.bitwise_or(img_thresh, img_flip)
-            #imshow(img_thresh)
-            #plt.title(f"FLIP THRESH {count}")
-            #plt.show()
+            img_thresh[:2,:] = 0
+            img_thresh[-2:,:] = 0
+            img_thresh[:,:1] = 0
+            img_thresh[:,-1:] = 0
+            imshow(img_thresh)
+            plt.title(f"FLIP THRESH {count}")
+            plt.show()
             
         else:
             img_thresh = cv2.morphologyEx(img_thresh, cv2.MORPH_CLOSE, kernel = np.ones((count,count), np.uint8))
             img_thresh = cv2.dilate(img_thresh, kernel = np.ones((count,count), np.uint8))
             img_thresh[:2,:] = 0
             img_thresh[-2:,:] = 0
-            '''
+            img_thresh[:,:1] = 0
+            img_thresh[:,-1:] = 0
             imshow(img_thresh)
             plt.title(f"ClOSE {count}")
             plt.show()          
-            '''
-        count = count + 1
         
+        if count > 5:
+            break
+    
         print(F"meanG {meanG}") #KASUJ
         if  meanG < 10:
             break
+        count = count + 1
+    chars = sorted(chars, key=lambda x:x[0])
     return chars
 
     
@@ -174,8 +185,8 @@ def getCharBox(img_gray):
 templeChars = getTemple()
 group_result = []
 rawChars = []
-
-img = cv2.imread(f"Assets/{1}.jpg")
+# 5 -lepsze kadrowanie, 6-lepsze kadrowanie, 10 - słabe zdjęcie
+img = cv2.imread(f"Assets/{6}.jpg")
 tablica = findTable(img) #return img
 if tablica is not None:
     img = tablica
@@ -224,6 +235,3 @@ for x in group_result:
         napis.append(chr(x + 22))
 
 print(napis)
-
-
-
